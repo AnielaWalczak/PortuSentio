@@ -7,7 +7,7 @@ gunicorn
 
 
 # Analiza języka
-spacy==3.6.0
+spacy
 pt_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.5.0/pt_core_news_lg-3.5.0.tar.gz
 absl-py
 gast
