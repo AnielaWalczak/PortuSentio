@@ -3,6 +3,8 @@ flask
 flask_sqlalchemy
 flask_login
 werkzeug
+gunicorn
+
 
 # Analiza języka
 spacy
