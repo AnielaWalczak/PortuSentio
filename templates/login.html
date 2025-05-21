@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="form-container">
+    <h1>Login</h1>
+    <form method="POST" action="/login">
+
+        <div class="form-group">
+            <label for="username">Login</label>
+            <input type="login" name="username" placeholder="Digite o login" required>
+        </div>
+
+        <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" name="password" id="password" placeholder="Digite a senha" required>
+        </div>
+
+        <button type="submit">Fazer login</button>
+    </form>
+
+    <p style="margin-top: 15px;">Não tem uma conta? <a href="/register">Registro</a></p>
+</div>
+
+{% if error %}
+    <script>
+        alert("{{ error }}");
+    </script>
+{% endif %}
+
+{% if success_message %}
+    <script>
+        alert("{{ success_message }}");
+        setTimeout(function() {
+            window.location.href = '/';  // Przenieś do homepage
+        }); 
+    </script>
+{% endif %}
+
+ <script>
+    function checkFormValidity() {
+        const isUsernameValid = username.value.trim() !== ""; 
+        const isPasswordValid = password.value.trim() !== ""; 
+
+        if (isUsernameValid && isPasswordValid) {
+            submitBtn.disabled = false;
+            submitBtn.style.backgroundColor = "";  
+            submitBtn.style.color = "";           
+        } else {
+            submitBtn.disabled = true;
+        }
+    }
+ </script>
+{% endblock %}

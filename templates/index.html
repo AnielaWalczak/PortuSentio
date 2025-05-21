@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="form-container">
+    <h1>Escrever uma opinião</h1>
+    <form action="/" method="post">
+        <label for="product_id">Escolha o produto:</label>
+        <select name="product_id" id="product_id" required>
+            <option value="" selected>Selecione um produto</option>
+            {% for product in products if product.active %}
+            <option value="{{ product.product_id }}">{{ product.product_name }}</option>
+            {% endfor %}
+        </select>
+
+        <br><br>
+        <input type="text" id="content" name="content" placeholder="Digite o texto aqui"
+        oninput="checkSentimentAndValue()" disabled required>
+        <br>
+        <div class="result-inline">
+            <div class="result-item">
+                <p class="result-label">Sentimento</p>
+                <p id="sentimentResult" class="result-value">⌛</p>
+            </div>
+            <div class="result-item">
+                <p class="result-label">Valor</p>
+                <p id="valueResult" class="result-value">⌛</p>
+            </div>
+        </div>
+        <br>
+        <button type="submit">Enviar</button>
+        </br>
+    </form>
+</div>
+
+
+<script>
+    // Odblokuj pole tekstowe po wybraniu produktu
+    document.getElementById("product_id").addEventListener("change", function () {
+        const contentInput = document.getElementById("content");
+        if (this.value) {
+            contentInput.disabled = false;
+            contentInput.placeholder = "Digite o texto aqui";
+        } else {
+            contentInput.disabled = true;
+            contentInput.value = "";
+            contentInput.placeholder = "Selecione um produto primeiro";
+        }
+    });
+
+    async function checkSentimentAndValue() {
+        let content = document.getElementById("content").value;
+        let sentimentBox = document.getElementById("sentimentResult");
+        let valueBox = document.getElementById("valueResult");
+        let productSelect = document.getElementById("product_id");
+
+        if (content.trim().length === 0) {
+            sentimentBox.innerText = "⌛";
+            valueBox.innerText = "⌛";
+            return;
+        }
+
+        const productId = productSelect.value;
+
+        try {
+            const sentimentResponse = await fetch("/predict", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: content })
+            });
+
+            const sentimentData = await sentimentResponse.json();
+            sentimentBox.innerText = sentimentData.sentiment || "⚠️";
+
+            const valueResponse = await fetch("/valuate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: content, product_id: productId })
+            });
+
+            const valueData = await valueResponse.json();
+            if (valueData.value !== undefined) {
+                valueBox.innerText = `${valueData.value}/5`;
+            } else {
+                valueBox.innerText = "⚠️ Erro no valor";
+            }
+
+        } catch (error) {
+            sentimentBox.innerText = "❌ Erro";
+            valueBox.innerText = "❌ Erro";
+            console.error("Erro:", error);
+        }
+    }
+</script>
+
+
+
+{% endblock %}

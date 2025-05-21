@@ -1,0 +1,3 @@
+{'brilho', 'tela', 'telefone', 'câmera', 'vídeos', 'fotos', 'bateria', 'interface', 'recursos','impressão'}
+{'tapetes', 'bateria', 'casa', 'limpeza', 'vida', 'volta', 'investimento', 'útil', 'esforço','função'}
+{'precisão', 'relógio', 'notificações', 'cronômetro', 'dia', 'vidro', 'pulseira', 'toque', 'visor','útil'}

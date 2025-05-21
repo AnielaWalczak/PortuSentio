@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="form-container">
+    <h1>Registro</h1>
+    <form method="POST" action="/register" id="register-form">
+
+        <div class="form-group">
+            <label for="username">Login</label>
+            <input type="login" name="username" id="username" placeholder="Digite o login" required>
+            <p id="usernameAvailability" style="font-size: 12px; padding-top: 0px;"></p> 
+        </div>
+
+        <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" name="password" id="password" placeholder="Digite a senha" required>
+            <p id="password-error" style="margin-top: 0px; color: red; font-size: 13px; word-wrap: break-word; white-space: normal; max-width: 300px;"></p> 
+        </div>
+
+        <div class="form-group">
+            <label for="password2">Repetir a senha</label>
+            <input type="password" name="password2" id="password2" placeholder="Repetir a senha" required>
+            <p id="match-msg" style="font-size: 14px;"></p> 
+        </div>
+
+        <button type="submit" id="submit-btn" disabled>Registro</button>
+    </form>
+
+    <p style="margin-top: 15px;">Já tem uma conta? <a href="/login">Fazer login</a></p>
+</div>
+
+{% if error %}
+    <script>
+        alert("{{ error }}");
+    </script>
+{% endif %}
+
+{% if success_message %}
+    <script>
+        alert("{{ success_message }}");
+
+        setTimeout(function() {
+            window.location.href = '/login';  // Przenieś do strony logowania
+        }); 
+    </script>
+{% endif %}
+
+<script>
+    const password = document.getElementById("password");
+    const password2 = document.getElementById("password2");
+    const username = document.getElementById("username");
+    const passwordError = document.getElementById("password-error");
+    const msg = document.getElementById("match-msg");
+    const submitBtn = document.getElementById("submit-btn");
+
+    function checkPasswordRequirements() {
+        const passwordValue = password.value;
+        const regex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
+
+        passwordError.textContent = "";
+
+        if (passwordValue.length === 0) return false; 
+
+        if (!regex.test(passwordValue)) {
+            passwordError.textContent = "A senha deve ter pelo menos 8 caracteres, uma letra maiúscula, um número e um símbolo especial.";
+            return false;
+        }
+        return true; 
+    }
+
+    function checkPasswordMatch() {
+        if (!password.value || !password2.value) {
+            msg.textContent = "";
+            return false;
+        }
+
+        if (password.value === password2.value) {
+            msg.textContent = "✅ As senhas são consistentes";
+            msg.style.color = "green";
+            return true; 
+        } else {
+            msg.textContent = "❌ As senhas não são as mesmas";
+            msg.style.color = "red";
+            return false; 
+        }
+    }
+
+    function checkFormValidity() {
+        const isPasswordValid = checkPasswordRequirements();
+        const doPasswordsMatch = checkPasswordMatch();
+        const isUsernameValid = username.value.trim() !== ""; 
+
+        if (isUsernameValid && isPasswordValid && doPasswordsMatch) {
+            submitBtn.disabled = false;
+            submitBtn.style.backgroundColor = "";  
+            submitBtn.style.color = "";           
+        } else {
+            submitBtn.disabled = true;
+        }
+    }
+
+    password.addEventListener("input", checkFormValidity);
+    password2.addEventListener("input", checkFormValidity);
+    username.addEventListener("input", checkFormValidity);
+
+    document.getElementById("username").addEventListener("input", async function () {
+        const username = this.value;
+        const availabilityBox = document.getElementById("usernameAvailability");
+
+        if (username.trim().length === 0) {
+            availabilityBox.innerText = "";
+            return;
+        }
+
+        availabilityBox.innerText = "⌛";  
+        try {
+            const response = await fetch("/check_username", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: username })
+            });
+
+            const data = await response.json();
+
+            if (data.available) {
+                availabilityBox.innerText = "✅ O nome de usuário está disponível";
+                availabilityBox.style.color = "green";
+            } else {
+                availabilityBox.innerText = "❌ O nome de usuário já está ocupado";
+                availabilityBox.style.color = "red";
+            }
+
+        } catch (error) {
+            availabilityBox.innerText = "❌ Erro ao verificar o nome de usuário";
+            availabilityBox.style.color = "red";
+            console.error("Error:", error);
+        }
+    });
+</script>
+{% endblock %}

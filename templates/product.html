@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<div class="product-container">
+    <h2>Lista de Produtos</h2>
+    <div class="products-list" style="display: flex; justify-content: center;">
+        <table id="productsTable" border="1" cellspacing="0" cellpadding="8">
+            <thead>
+                <tr>
+                    <th>Nome do Produto</th>
+                    <th>Ativo</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                    <tr data-product-id="{{ product.product_id }}">
+                        <td>{{ product.product_name }}</td>
+                        <td class="active-status">{{ 'Sim' if product.active else 'Não' }}</td>
+                        <td>
+                            <button class="toggle-active-btn {{ 'desativar' if product.active else 'ativar' }}">
+                                {{ 'Desativar' if product.active else 'Ativar' }}
+                            </button>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="3" class="no-products">Nenhum produto encontrado</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="add-product-form">
+        <h3>Adicionar Novo Produto</h3>
+        <form id="addProductForm" method="POST">
+            <div class="form-group">
+                <input type="text" name="product_name" id="product_name" placeholder="Digite o nome do produto" required>
+            </div>
+
+            <button type="submit" id="submit-btn">Adicionar Produto</button>
+        </form>
+    </div>
+
+    <div id="message"></div> 
+</div>
+
+<script>
+    document.getElementById("addProductForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        const productName = document.getElementById("product_name").value;
+        const messageBox = document.getElementById("message");
+        const productsTableBody = document.querySelector("#productsTable tbody");
+
+        messageBox.innerText = "\u231B Adicionando produto...";
+
+        try {
+            const response = await fetch("/add_produto", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ product_name: productName })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(data.success);
+
+                const newRow = document.createElement("tr");
+
+                const nameCell = document.createElement("td");
+                nameCell.textContent = productName;
+
+                const activeCell = document.createElement("td");
+                activeCell.textContent = "Sim";
+                activeCell.classList.add("active-status");
+
+                const actionCell = document.createElement("td");
+                const toggleButton = document.createElement("button");
+                toggleButton.textContent = "Desativar";
+                toggleButton.classList.add("toggle-active-btn", "desativar");
+                actionCell.appendChild(toggleButton);
+
+                newRow.appendChild(nameCell);
+                newRow.appendChild(activeCell);
+                newRow.appendChild(actionCell);
+
+                const noProductsMessage = document.querySelector(".no-products");
+                if (noProductsMessage) {
+                    noProductsMessage.parentElement.remove(); 
+                }
+
+                productsTableBody.appendChild(newRow);
+
+                document.getElementById("product_name").value = "";
+
+                messageBox.innerText = "";
+            } else {
+                messageBox.innerText = data.error || "Ocorreu um erro desconhecido.";
+                messageBox.style.color = "red";
+            }
+
+        } catch (error) {
+            messageBox.innerText = "\u274C Erro ao adicionar produto";
+            messageBox.style.color = "red";
+            console.error("Error:", error);
+        }
+    });
+
+    // Toggle active status
+    document.addEventListener("click", async function (event) {
+        if (event.target.classList.contains("toggle-active-btn")) {
+            const row = event.target.closest("tr");
+            const productId = row.dataset.productId;
+
+            try {
+                const response = await fetch(`/toggle_ativo/${productId}`, {
+                    method: "POST"
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const statusCell = row.querySelector(".active-status");
+                    const button = row.querySelector(".toggle-active-btn");
+
+                    const isActive = data.active;
+                    statusCell.textContent = isActive ? "Sim" : "Não";
+                    button.textContent = isActive ? "Desativar" : "Ativar";
+
+                    button.classList.toggle("desativar", isActive);
+                    button.classList.toggle("ativar", !isActive);
+                } else {
+                    alert("Erro ao atualizar o status do produto.");
+                }
+            } catch (err) {
+                console.error("Erro:", err);
+                alert("Erro de rede ao tentar atualizar o status.");
+            }
+        }
+    });
+</script>
+{% endblock %}

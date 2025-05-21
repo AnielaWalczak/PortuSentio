@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<div class="content">
+    {% if comments | length < 1 %}
+    <h3>Nenhum comentário no banco de dados...</h3>
+    {% else %}
+    
+<div class="filters">
+    <label for="productFilter">Produto:</label>
+    <select id="productFilter">
+        <option value="">Todos</option>
+        <option value="telefone">telefone</option>
+        <option value="robô">robô</option>
+        <option value="assistir">assistir</option>
+    </select>
+
+    <label for="resultFilter">Resultado:</label>
+    <select id="resultFilter">
+        <option value="">Todos</option>
+        <option value="positivo">Positivo</option>
+        <option value="neutro">Neutro</option>
+        <option value="negativo">Negativo</option>
+    </select>
+
+    <label for="dateFilter">Adicionado:</label>
+    <select id="dateFilter">
+        <option value="">Todos</option>
+    </select>
+
+    <button onclick="filterTable()">Filtrar</button>
+
+    <button onclick="resetFilters()">Resetar</button>
+</div>
+    <div class="table-container">
+        <table id="my-table">
+            <thead>
+                <tr>
+                    <th onClick="sortTable(0)">ID <span id="arrow0" class="inactive">▲</span></th>
+                    <th onClick="sortTable(1)">Produto <span id="arrow1" class="inactive">▲</span></th>
+                    <th onClick="sortTable(2)">Usuário <span id="arrow2" class="inactive">▲</span></th>
+                    <th>Comentário</th> 
+                    <th onClick="sortTable(4)">Valor <span id="arrow4" class="inactive">▲</span></th>
+                    <th onClick="sortTable(5)">Resultado <span id="arrow5" class="inactive">▲</span></th>
+                    <th onClick="sortTable(6)">Adicionado <span id="arrow6" class="active">▼</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comment in comments %}
+                <tr>
+                    <td>{{ comment.id }}</td>
+                    <td>{{ comment.product.product_name }}</td>
+                    <td>{{ comment.user }}</td>
+                    <td style="width: 60%">{{ comment.content }}</td>
+                    <td>{{ comment.value }}</td>
+                    <td>{{ comment.result }}</td>
+                    <td>{{ comment.created_on.strftime("%Y-%m-%d") }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+<script>
+   window.onload = function () {
+    updateAllFilters();  
+
+    document.getElementById("productFilter").addEventListener("change", updateAllFilters);
+    document.getElementById("resultFilter").addEventListener("change", updateAllFilters);
+    document.getElementById("dateFilter").addEventListener("change", updateAllFilters);
+    };
+
+    function updateAllFilters() {
+        const table = document.getElementById("my-table");
+        const rows = table.getElementsByTagName("tr");
+
+        const productSet = new Set();
+        const resultSet = new Set();
+        const dateSet = new Set();
+
+        const selectedProduct = document.getElementById("productFilter").value.toLowerCase();
+        const selectedResult = document.getElementById("resultFilter").value.toLowerCase();
+        const selectedDate = document.getElementById("dateFilter").value.toLowerCase();
+
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            const product = cells[1].innerText.toLowerCase();
+            const result = cells[5].innerText.toLowerCase();
+            const date = cells[6].innerText.toLowerCase();
+
+            const matchesProduct = !selectedProduct || product === selectedProduct;
+            const matchesResult = !selectedResult || result === selectedResult;
+            const matchesDate = !selectedDate || date === selectedDate;
+
+            if (matchesResult && matchesDate) productSet.add(product);
+            if (matchesProduct && matchesDate) resultSet.add(result);
+            if (matchesProduct && matchesResult) dateSet.add(date);
+        }
+
+        updateSelect("productFilter", productSet, selectedProduct, "Todos");
+        updateSelect("resultFilter", resultSet, selectedResult, "Todos");
+        updateSelect("dateFilter", dateSet, selectedDate, "Todos");
+    }
+
+    function updateSelect(selectId, valuesSet, currentValue, defaultText) {
+        const select = document.getElementById(selectId);
+        const current = currentValue.toLowerCase();
+
+        select.innerHTML = `<option value="">${defaultText}</option>`;
+        Array.from(valuesSet)
+            .sort()
+            .forEach(value => {
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = capitalize(value);
+                if (value === current) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+    }
+
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    function filterTable() {
+        const productFilter = document.getElementById("productFilter").value.toLowerCase();
+        const resultFilter = document.getElementById("resultFilter").value.toLowerCase();
+        const dateFilter = document.getElementById("dateFilter").value.toLowerCase();
+
+        const table = document.getElementById("my-table");
+        const rows = table.getElementsByTagName("tr");
+
+        let anyVisible = false;
+
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName("td");
+            const product = cells[1].innerText.toLowerCase();
+            const result = cells[5].innerText.toLowerCase();
+            const date = cells[6].innerText.toLowerCase();
+
+            const visible =
+                (!productFilter || product === productFilter) &&
+                (!resultFilter || result === resultFilter) &&
+                (!dateFilter || date === dateFilter);
+
+            rows[i].style.display = visible ? "" : "none";
+            if (visible) anyVisible = true;
+        }
+
+        if (!anyVisible) {
+            alert("Não há resultados para os filtros selecionados! - Brak wyników dla wybranych filtrów!");
+        }
+
+        updateAllFilters(); 
+    }
+
+    function resetFilters() {
+        document.getElementById("productFilter").value = "";
+        document.getElementById("resultFilter").value = "";
+        document.getElementById("dateFilter").value = "";
+
+        const table = document.getElementById("my-table");
+        const rows = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < rows.length; i++) {
+            rows[i].style.display = "";
+        }
+
+        updateAllFilters(); 
+    }
+
+    function sortTable(n) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("my-table");
+        switching = true;
+        dir = "asc";
+
+        let headers = table.getElementsByTagName("TH");
+        for (let j = 0; j < headers.length; j++) {
+            headers[j].classList.remove("asc", "desc");
+            let arrowSpan = headers[j].querySelector("span");
+            if (arrowSpan) {
+            arrowSpan.classList.remove("asc", "desc");
+            arrowSpan.classList.add("inactive");
+            arrowSpan.innerHTML = "▲"; 
+            }
+        }
+
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+
+            for (i = 1; i < (rows.length - 1); i++) {
+            shouldSwitch = false;
+            x = rows[i].getElementsByTagName("TD")[n].innerHTML.trim();
+            y = rows[i + 1].getElementsByTagName("TD")[n].innerHTML.trim();
+
+            let xVal = isNaN(x) ? x.toLowerCase() : parseFloat(x);
+            let yVal = isNaN(y) ? y.toLowerCase() : parseFloat(y);
+
+            if (dir === "asc" && xVal > yVal) {
+                shouldSwitch = true;
+                break;
+            } else if (dir === "desc" && xVal < yVal) {
+                shouldSwitch = true;
+                break;
+            }
+            }
+
+            if (shouldSwitch) {
+            rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+            switching = true;
+            switchcount++;
+            } else {
+            if (switchcount === 0 && dir === "asc") {
+                dir = "desc";
+                switching = true;
+            }
+            }
+        }
+
+        let selectedArrow = headers[n].querySelector("span");
+        headers[n].classList.remove("inactive");
+        selectedArrow.classList.remove("inactive");
+
+        if (dir === "asc") {
+            headers[n].classList.add("asc");
+            selectedArrow.classList.add("asc");
+            selectedArrow.innerHTML = "▲"; 
+        } else {
+            headers[n].classList.add("desc");
+            selectedArrow.classList.add("desc");
+            selectedArrow.innerHTML = "▼"; 
+        }
+        }
+</script>
+{% endblock %}

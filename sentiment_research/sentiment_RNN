@@ -1,0 +1,117 @@
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+import re
+
+# Tokenizer and vocab builder
+def simple_tokenizer(text):
+    text = text.lower()
+    text = re.sub(r"[^a-zA-Zà-ÿ0-9\s]", "", text)
+    return text.split()
+
+def build_vocab(texts):
+    tokens = [token for text in texts for token in simple_tokenizer(text)]
+    vocab = {word: i + 2 for i, word in enumerate(set(tokens))}
+    vocab['<PAD>'] = 0
+    vocab['<UNK>'] = 1
+    return vocab
+
+def encode(text, vocab, max_len=100):
+    tokens = simple_tokenizer(text)
+    ids = [vocab.get(token, 1) for token in tokens][:max_len]
+    return ids + [0] * (max_len - len(ids))
+
+# Dataset
+class RNNSentimentDataset(Dataset):
+    def __init__(self, texts, labels, vocab, max_len=100):
+        self.texts = torch.tensor([encode(t, vocab, max_len) for t in texts], dtype=torch.long)
+        self.labels = torch.tensor(labels, dtype=torch.long)
+
+    def __len__(self):
+        return len(self.texts)
+
+    def __getitem__(self, idx):
+        return self.texts[idx], self.labels[idx]
+
+# Model
+class RNNClassifier(nn.Module):
+    def __init__(self, vocab_size, embedding_dim=64, hidden_dim=64, output_dim=3):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=0)
+        self.rnn = nn.RNN(embedding_dim, hidden_dim, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        embedded = self.embedding(x)
+        output, hidden = self.rnn(embedded)
+        return self.fc(hidden.squeeze(0))
+
+# Training and evaluation
+
+def preprocess_data(file_path):
+    df = pd.read_csv(file_path, low_memory=False)
+    df = df.dropna(subset=['review_text', 'overall_rating'])
+    df['label'] = df['overall_rating'].apply(lambda x: 2 if x >= 4 else 0 if x <= 2 else 1)
+    df['label'] = df['label'].astype(int)
+    return df
+
+def train_rnn_model(df, device):
+    train_texts, val_texts, train_labels, val_labels = train_test_split(
+        df['review_text'], df['label'], test_size=0.2, random_state=42, stratify=df['label'])
+
+    vocab = build_vocab(train_texts)
+    train_dataset = RNNSentimentDataset(train_texts.tolist(), train_labels.tolist(), vocab)
+    val_dataset = RNNSentimentDataset(val_texts.tolist(), val_labels.tolist(), vocab)
+
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=32)
+
+    model = RNNClassifier(vocab_size=len(vocab)).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    criterion = nn.CrossEntropyLoss()
+
+    for epoch in range(3):
+        model.train()
+        for texts, labels in train_loader:
+            texts, labels = texts.to(device), labels.to(device)
+            outputs = model(texts)
+            loss = criterion(outputs, labels)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+    return model, vocab, val_dataset
+
+def predict_comment(model, vocab, device, comment):
+    model.eval()
+    encoded = encode(comment, vocab)
+    tensor = torch.tensor([encoded], dtype=torch.long).to(device)
+    with torch.no_grad():
+        outputs = model(tensor)
+        prediction = torch.argmax(outputs, dim=1).item()
+    return "Positivo" if prediction == 2 else "Neutro" if prediction == 1 else "Negativo"
+
+if __name__ == "__main__":
+    file_path = 'B2W-Reviews01.csv'
+    df = preprocess_data(file_path)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    model, vocab, val_dataset = train_rnn_model(df, device)
+
+    val_loader = DataLoader(val_dataset, batch_size=32)
+    all_preds = []
+    all_labels = []
+    model.eval()
+    with torch.no_grad():
+        for texts, labels in val_loader:
+            texts = texts.to(device)
+            outputs = model(texts)
+            preds = torch.argmax(outputs, dim=1).cpu().tolist()
+            all_preds.extend(preds)
+            all_labels.extend(labels.tolist())
+
+    print(classification_report(all_labels, all_preds))

@@ -1,0 +1,35 @@
+# Flask i rozszerzenia
+flask
+flask_sqlalchemy
+flask_login
+werkzeug
+
+# Analiza języka
+spacy
+pt_core_news_lg @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.5.0/pt_core_news_lg-3.5.0.tar.gz
+absl-py
+gast
+astunparse
+h5py
+
+
+# Uczenie maszynowe / NLP
+torch 
+scikit-learn
+pandas
+numpy<2.1.0
+google-pasta>=0.1.1
+grpcio<2.0
+psutil
+
+# PDF raporty
+reportlab
+
+# Wykresy i analiza
+matplotlib
+
+# BERTopic (jeśli używasz topic modelingu)
+bertopic
+
+# Testowanie
+pytest

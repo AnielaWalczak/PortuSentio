@@ -1,0 +1,65 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import LinearSVC
+from sklearn.metrics import classification_report
+import joblib  # For saving the model
+
+def preprocess_data(file_path, sample_size=None):
+    print("Loading data...")
+    df = pd.read_csv(file_path, low_memory=False)
+    df = df.dropna(subset=['review_text', 'overall_rating'])
+
+    # Convert ratings to sentiment labels
+    df['label'] = df['overall_rating'].apply(
+        lambda x: 2 if x >= 4 else 0 if x <= 2 else 1  # 0 = negative, 1 = neutral, 2 = positive
+    )
+    df['label'] = df['label'].astype(int)
+
+    if sample_size:
+        print(f"Sampling {sample_size} examples from full dataset of {len(df)}")
+        df = df.sample(n=sample_size, random_state=42)
+
+    return df
+
+def train_svm_model(df):
+    print("Splitting dataset...")
+    train_texts, val_texts, train_labels, val_labels = train_test_split(
+        df['review_text'], df['label'], test_size=0.2, random_state=42, stratify=df['label']
+    )
+
+    print("Vectorizing with TF-IDF...")
+    vectorizer = TfidfVectorizer(max_features=10000)  # Increased for richer vocabulary
+    X_train = vectorizer.fit_transform(train_texts)
+    X_val = vectorizer.transform(val_texts)
+
+    print("Training LinearSVC...")
+    model = LinearSVC()
+    model.fit(X_train, train_labels)
+
+    print("Evaluating...")
+    preds = model.predict(X_val)
+    print(classification_report(val_labels, preds))
+
+    # Save model and vectorizer
+    joblib.dump(model, 'svm_sentiment_model.joblib')
+    joblib.dump(vectorizer, 'tfidf_vectorizer.joblib')
+
+    return model, vectorizer
+
+def predict_comment(model, vectorizer, comment):
+    X = vectorizer.transform([comment])
+    prediction = model.predict(X)[0]
+    return "Positivo" if prediction == 2 else "Neutro" if prediction == 1 else "Negativo"
+
+if __name__ == "__main__":
+    file_path = 'B2W-Reviews01.csv'
+    
+    # Adjust sample_size=None to use all data, or sample_size=50000 for subset
+    df = preprocess_data(file_path, sample_size=None)
+
+    model, vectorizer = train_svm_model(df)
+
+    # Example prediction
+    example = "Produto maravilhoso, chegou antes do prazo!"
+    print(f"Komentarz: \"{example}\" ➝ {predict_comment(model, vectorizer, example)}")

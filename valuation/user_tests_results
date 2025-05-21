@@ -1,0 +1,12 @@
+Precise ranges: 37
+Approximate ranges: 47
+Acceptable ranges: 16
+Unacceptable ranges: 0
+
+Precise fit: 37%
+Approximate fit: 84%
+Acceptable fit: 100%
+Unacceptable fit: 0%
+
+PAA = precise_ranges * 1 + approximate_ranges * 0.75 + acceptable_ranges * 0.5
+PAA = 80.25%
